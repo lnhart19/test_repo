@@ -1,0 +1,20 @@
+---
+title: 'The great debate: R vs. Python'
+author: ''
+date: '2020-12-06'
+slug: new-post
+categories: []
+tags: []
+description: ''
+---
+If you have ever lingered on stack exchange, you have likely come across the great debate between R and Python amongst coders. Some say that R is just not enough when it comes to machine learning, but others would lay their life down for its visualization capabilities in ggplot. Some people absolutely love the cleanliness of python code, while others cannot get over the difficulty of regex. You know what I say, why not both!? 
+![](/post/2020-12-06-new-post_files/Why not both, R and python.png)
+
+I will show you how to use both R and python in the same script using the package: `reticulate`. I will manipulate the infamous `iris` and `diamonds` dataset in both R and python to prove that not only can these languages speak to each other, but they can also perform identical tasks using different functions. I will create a new column in each dataset as well as plot some of the variables. 
+```{R}
+library(reticulate)
+library(tidyverse)
+irisR <- iris
+```
+
+

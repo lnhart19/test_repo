@@ -1,0 +1,237 @@
+---
+title: 'Project 1: Exploratory Data Analysis'
+author: "Lauren Hart, lnh766"
+date: '10/1/2020'
+output:
+  html_document:
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+  pdf_document:
+    toc: no
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE, fig.align = "center", warning = F, message = F,
+tidy=TRUE, tidy.opts=list(width.cutoff=60), R.options=list(max.print=100))
+```
+#Lauren Hart, lnh766
+
+##Introduction
+  *In this project, two datasets are included that correspond to two different North American tree species found in the same  four various ForestGeo plots. The species are *Acer rubra*, the red maple tree (ACERRU), and *Quercus alba*, the red oak tree (QUERRU). I am interested in these datasets because I would like to analyze the chemical similarities and differences intraspecifically across a spatial gradient. I would also like to analyze inter-specific chemical similarities and differences in the same forest plots to better understand and hypothesize reasonings for for chemical evolution due to herbivory pressures. We hypothesize to see the same species to be more chemically similar, but as they are more spaced out, they should become more different. We expect to see different species that live near each other to be less chemically similar as they must outcompete each other for survival, and different species that do not live in the same plots to be more chemically similar. We will quantify chemical similarity using chemical richness, corresponding to the area of the compound, and chemical abundance, corresponding to the number of compounds each species produces. The immature leaves of these trees were sampled by field scientists at the Michigan, Tyson, Smithsonian Conservation Biology Institute, and Smithsonian Environmental Research Center plots found in North America. These leaves were then put through methanol extraction and processed through orbitrap mass spectrometry. The datasets are mass spectrometry ionization and fragmentation data that has been processed and mined using the program *Compound Discover*. Each dataset contains many samples from each plot, and each sample has its' own column within the dataset with its' areas corresponding to each compound below it as a value.*
+  
+  *The original datasets include many variables although not all of them are neccesary for this research. The datasets include the `Name` of the compounds found within the species and their `formula` and `Molecular.Weight`. They include mass spectrometry specific data such as the ionization `area` which appears under each sample ran in the dataset as well as the retention time within the orbitrap, `RT..min.`. The *Compound Discover* program mines from four different databases of compounds and produces a response ranging from `Full Match` to `not a match` as a value under one of the four column names that contain `Annotation...`. Although there are many other columns in the datasets, they are not relevant to the statistical work that will be done in this project. If interested, you can visit the *Compound Discover* website to review their manual and better understand the dataset variables. <https://assets.thermofisher.com/TFS-Assets/CMD/manuals/man-xcali-98120-compound-discoverer-user-manxcali98120-en.pdf>*
+
+*First, we must read the .csv files into the environment.*
+
+```{r}
+##Read .csv files into the environment 
+library(tidyverse)
+ACERRU_compounds <- read.table("ACERRU_compounds.csv", header=TRUE)
+QUERRU_compounds <- read.table("QUERRU_compounds.csv", header=TRUE)
+```
+
+##1. TIDYING THE DATA
+
+##ACERRU TIDYING
+*Next, we must tidy the data for ACERRU. First, the dataset must be converted into a dataframe. *
+
+```{r}
+##ACERRU- red maple (Acer Rubra)
+ACERRU_project <- as.data.frame(ACERRU_compounds)
+```
+
+*Next, the rows necessary for the dataset must be selected. We need to include all of the samples, the compound name and molecular weight, the area and retention time for each compound, and the four annotation columns to sum up the amount of full matches each compound had. Next, the data needs to be pivoted longer so that area and sample ID are their own columns.*
+
+```{r}
+##select rows to include in data frame and pivot longer 
+ACERRU_project <- ACERRU_compounds %>% select(2, 4:7, 9:10, 19:48)  %>% mutate(Species = "ACERRU") %>% pivot_longer(8:37, names_to = "SampleID" , values_to= "Area")
+```
+
+*Next, the plots need to have uniform naming. In the blank files, some of them are slightly different and they must be seperated correctly to be in their own column. We use separate after the plots are uniformly named so that plot can have its own column.*
+
+```{r}
+##rename plots that have incorrect plot name 
+ACERRU_project <- ACERRU_project %>% mutate(SampleID = str_replace(SampleID, "SERC", "SR"))%>% mutate(SampleID = str_replace(SampleID, "SCBI", "SB")) %>% mutate(SampleID = str_replace(SampleID, "TRB", "TR")) %>% mutate(SampleID = str_replace(SampleID, "UMB", "UM"))
+
+##plot in its own column
+ACERRU_project <- ACERRU_project %>% separate(SampleID, into = c(NA, "temp2"), sep= 6, remove=F) %>% separate(temp2, into=c("Plot", NA), sep=2)
+```
+
+*Lastly, we want to create a row that has the sum, for each sampleID and compound, of full matches from each database. We did this below, and then removed the four annotation columns so that we had just one numeric variable that adds up the total full matches for that combination of sample ID and compound.*
+
+```{r}
+#row with sum of full matches for that sampleID and name 
+ACERRU_project <- ACERRU_project %>% group_by(Name, SampleID)%>% mutate(Full_Matches = sum(c(Annotation.Source..Predicted.Compositions=="Full match", Annotation.Source..mzCloud.Search == "Full match", Annotation.Source..Metabolika.Search == "Full match", Annotation.Source..ChemSpider.Search == "Full match"))) 
+
+##remove rows for Annotations
+ACERRU_project <- ACERRU_project %>% subset(select = -c(2:5))
+```
+
+*All of this code was eventually ran together to produce a dataset that has 8 variables and 15,236 rows after I exlcuded the blanks in the final two filter functions used in this code. For clarification, the blank data was excldued from the rest of the analyses because the data has already been filtered and only the compounds with ionization areas above the blank values were kept in the dataframe, thus, the blank data does not need to be analyzed again with the real QUERRU and ACERRU data. We ran glimpse at the end of the code to understand what we had left and to review our data. *
+
+```{r}
+## ALL ran together
+ACERRU_project <- ACERRU_compounds %>% select(2, 4:7, 9:10, 19:48)  %>% mutate(Species = "ACERRU") %>% pivot_longer(8:37, names_to = "SampleID" , values_to= "Area") %>% mutate(SampleID = str_replace(SampleID, "SERC", "SR"))%>% mutate(SampleID = str_replace(SampleID, "SCBI", "SB")) %>% mutate(SampleID = str_replace(SampleID, "TRB", "TR")) %>% mutate(SampleID = str_replace(SampleID, "UMB", "UM"))  %>% separate(SampleID, into = c(NA, "temp2"), sep= 6, remove=F) %>% separate(temp2, into=c("Plot", NA), sep=2)  %>% group_by(Name, SampleID)%>% mutate(Full_Matches = sum(c(Annotation.Source..Predicted.Compositions=="Full match", Annotation.Source..mzCloud.Search == "Full match", Annotation.Source..Metabolika.Search == "Full match", Annotation.Source..ChemSpider.Search == "Full match"))) %>% subset(select = -c(2:5))  %>% filter(!str_detect(SampleID,"Blank")) %>% filter(!str_detect(SampleID, "BLANK")) %>% ungroup()
+
+glimpse(ACERRU_project)
+```
+
+##QUERRU TIDYING 
+*Next, we must tidy the data for ACERRU. First, the dataset must be converted into a dataframe. *
+
+```{r}
+#QUERRU- red oak (Quercus Alba)
+QUERRU_project <- as.data.frame(QUERRU_compounds)
+```
+
+*Next, the rows necessary for the dataset must be selected. We need to include all of the samples, the compound name and molecular weight, the area and retention time for each compound, and the four annotation columns to sum up the amount of full matches each compound had. Next, the data needs to be pivoted longer so that area and sample ID are their own columns.*
+
+```{r}
+#select rows and pivot longer 
+QUERRU_project <- QUERRU_compounds %>% select(2, 4:7, 9:10, 19:55) %>% mutate(Species = "QUERRU") %>% pivot_longer(8:44, names_to = "SampleID" , values_to= "Area") 
+```
+
+*Next, the plots need to have uniform naming. In the blank files, some of them are slightly different and they must be seperated correctly to be in their own column. We use separate after the plots are uniformly named so that plot can have its own column.*
+
+```{r}
+#rename incorrect plot names 
+QUERRU_project <- QUERRU_project %>% mutate(SampleID = str_replace(SampleID, "SERC", "SR"))%>% mutate(SampleID = str_replace(SampleID, "SCBI", "SB")) %>% mutate(SampleID = str_replace(SampleID, "TRB", "TR")) %>% mutate(SampleID = str_replace(SampleID, "UMB", "UM"))
+
+#new column for plot names 
+QUERRU_project <- QUERRU_project %>% separate(SampleID, into = c(NA, "temp2"), sep= 6, remove=F) %>% separate(temp2, into=c("Plot", NA), sep=2)
+```
+
+*Lastly, we want to create a row that has the sum, for each sampleID and compound, of full matches from each database. We did this below, and then removed the four annotation columns so that we had just one numeric variable that adds up the total full matches for that combination of sample ID and compound.*
+
+```{r}
+#Sum full matches in new column
+QUERRU_project <- QUERRU_project %>% group_by(Name, SampleID)%>% mutate(Full_Matches = sum(c(Annotation.Source..Predicted.Compositions=="Full match", Annotation.Source..mzCloud.Search == "Full match", Annotation.Source..Metabolika.Search == "Full match", Annotation.Source..ChemSpider.Search == "Full match"))) %>% subset(select = -c(2:5))
+```
+
+*All of this code was eventually ran together to produce a dataset that has 8 variables and 18,612 rows after I excluded the blank data from the data. We ran glimpse at the end of the code to understand what we had left and to review our data. *
+
+```{r}
+##All together
+QUERRU_project <- QUERRU_compounds %>% select(2, 4:7, 9:10, 19:55) %>% mutate(Species = "QUERRU") %>% pivot_longer(8:44, names_to = "SampleID" , values_to= "Area") %>% mutate(SampleID = str_replace(SampleID, "SERC", "SR"))%>% mutate(SampleID = str_replace(SampleID, "SCBI", "SB")) %>% mutate(SampleID = str_replace(SampleID, "TRB", "TR")) %>% mutate(SampleID = str_replace(SampleID, "UMB", "UM")) %>% separate(SampleID, into = c(NA, "temp2"), sep= 6, remove=F) %>% separate(temp2, into=c("Plot", NA), sep=2)  %>% group_by(Name, SampleID)%>% mutate(Full_Matches = sum(c(Annotation.Source..Predicted.Compositions=="Full match", Annotation.Source..mzCloud.Search == "Full match", Annotation.Source..Metabolika.Search == "Full match", Annotation.Source..ChemSpider.Search == "Full match"))) %>% subset(select = -c(2:5)) %>% filter(!str_detect(SampleID,"Blank")) %>% filter(!str_detect(SampleID, "BLANK")) %>% ungroup()
+
+glimpse(QUERRU_project)
+```
+
+##2. JOINING THE DATA 
+  *In the case of this data, the dataset for each species has the same variables. I purposely named the variables the same thing for each species so that they could eventually be stacked. They could be joined with the common variable of plot, but this would lead to duplicated rows and trouble with plotting in the future. For the sake of our analyses and figures, stacking the data using `bind_rows` was the best choice to join ACERRU and QUERRU data. The ACERRU dataframe had 15,236 observations of 8 variables, and the QUERRU dataframe had 18,612 observations of the same 8 variables. After the dataframes were stacked, the final dataframe, `AQ_Joined` has 33,848 observations of the same 8 variables. No rows of data were dropped during the join because they are all vital to the data to calculate summary statistics and plots. `AQ_Joined` will be used for the remainder of the analyses, except for the correlation matrix where I will do a `full_join` to the data. *
+
+```{r}
+#bind rows together by stacking them: 
+AQ_Joined <- bind_rows(QUERRU_project, ACERRU_project) %>% rename(Full.Match = Full_Matches)
+AQ_Joined
+
+```
+
+##3. WRANGLING/SUMMARY STATISTICS 
+*In order to better understand the relationships that are present between ACERRU and QUERRU, as well as how they are similar and different to their own conspecifics in different plots, summary statistics need to be calculated for different groupings of variables. I decided to summarize each numeric variable without a grouping, and then summarized each numeric variable when grouped by plot and species. I used mean, standard deviation, minimum, maximum, and the number of total distinct values in each response variable to summarize the variables. I used mutate in the reshaping of my data to create the number of full matches column that summed the number of full matches for each compound and sample ID combination from each database. Also, I used filter in order to exclude the blanks from my joined dataframe. Lastly, a correlation matrix was created for the numeric variables in the dataset after the data was reorganized to make x numeric. All of these summary statistics were then tidied into a table.*
+```{r}
+#number of distinct values, mean, standard deviation, minimum, and maxium for each numeric variable in the joined dataset in a table:
+table_for_numerics <- AQ_Joined %>% select(is.numeric) %>% summarize_all(c(n=n_distinct, mean=mean, sd=sd, mininmum = min, maximum = max)) %>% pivot_longer(3:20, names_to = "stat", values_to = "value") %>% separate(stat, into = c("variable", "statistic"), sep = "_") %>% pivot_wider(names_from = statistic, values_from = value) 
+table_for_numerics %>% filter(variable == "Area") %>% arrange(sd)   #see lowest to highest sd for area
+table_for_numerics %>% filter(variable == "Area") %>% arrange(-sd)  #see highest to lowest sd for area
+
+#grouping by plot and species I calculated: the number of distinct values, mean, standard deviation,  minimum, and maximum values and made the summary statistics into a table:
+table_for_groupings <- AQ_Joined %>% group_by(Species, Plot) %>% summarize_if(is.numeric, c(n=n_distinct, mean = mean, sd=sd, minimum = min, maximum = max)) %>% pivot_longer(3:22, names_to = "stat", values_to = "value") %>% separate(stat, into=c("variable", "statistic"), sep="_") %>% pivot_wider(names_from = statistic, values_from = value)
+table_for_groupings %>% filter(variable == "Area")%>%arrange(n)  #lowest to highest amount of distinct values for area
+table_for_groupings %>% filter(variable == "Area")%>%arrange(-n) #highest to lowest amount of distinct values for area 
+
+#retidying of data to create a correlation matrix and eventually a correlation heat map, used a full join to include all of the data in the project: 
+NewJoin_AQ <- full_join(ACERRU_project, QUERRU_project, by = "Plot") %>% rename(ACERRU_Compounds = Name.x, ACERRU_MW = Molecular.Weight.x, ACERRU_RT = RT..min..x, Species_A = Species.x, ACERRU_ID = SampleID.x, ACERRU_area = Area.x, ACERRU_FullMatch = Full_Matches.x, QUERRU_Compounds = Name.y, QUERRU_MW = Molecular.Weight.y, QUERRU_RT = RT..min..y, Species_Q = Species.y, QUERRU_ID = SampleID.y, QUERRU_area = Area.y, QUERRU_FullMatch = Full_Matches.y) %>% relocate(Plot, .after=ACERRU_FullMatch)
+glimpse(NewJoin_AQ)
+
+#creating a correlation matrix: 
+cormatAQ <- NewJoin_AQ %>% na.omit() %>% select(is.numeric) %>% cor(use="pair")
+```
+  *The summary of statistics above are just a few of the ways we could analyze the data. By computing the number of distinct values,  mean, standard deviation, minimum, and maximum values for each numeric variable, we can get a better idea of the spread and characteristics of the data. For the compound mean area, MIPC had the lowest area in QUERRU and Erucamide had the highest area in both QUERRU and ACERRU. Erucamide also had the largest standard deviation in both ACERRU and QUERRU, and 2,3-Bis[(9E)-9-octadecenoyloxy]propyl-2-(trimethylammonio)ethylphosphat had the lowest standard deviation when in ACERRU. The rest of these summary statistics for each compound can be seen from the table `table_for_numerics` and can be manipulated using the filter and arrange dplyr functions as I did above in the 2 examples on lines 141 and 142. *
+
+   *I then calculated the numeric summary statistics after grouping the compounds by species and plot. I found that QUERRU in the SCBI (SB) plot had the lowest mean Area and ACERRU in the SERC (SR) plot had the highest mean , maximum, and standard deviation for area. The QUERRU at the Michigan plot (UM) had the most distinct compounds, and the QUERRU at the SERC (SR) plot had the least amount of compounds, with a large difference in between (aout 4,000). The rest of the grouped summary statistics can be observed in the table and rearranged using the filter and arrange dplyr functions as I demonstrated with two exmaples in lines 146 and 147. Lastly, the correlation matrix shows low correlations for every variable combination.*
+   
+##4. VISUALIZING THE DATA 
+* *In this section, I will plot different variables against each other in the dataset in order to visualize the data better. These are just a handful of possible visualizations that we can make in ggplot for the purpose of figures. *
+ 
+*Correlation heat map* 
+```{r}
+#tidy the correlation matrix: 
+tidycormatAQ <- cormatAQ %>% as.data.frame %>% rownames_to_column("Variable_1") %>% pivot_longer(-1, names_to = "Variable_2", values_to = "correlation")
+#make the correlation matrix:
+tidycormatAQ %>% ggplot(aes(Variable_1, Variable_2, fill=correlation)) + geom_tile() + scale_fill_gradient2(low="light blue", mid= "turquoise", high= "purple") + geom_text(aes(label=round(correlation,2)), color = "white", size=4) + theme(axis.text.x=element_text(angle=90, hjust=1)) + coord_fixed() + ggtitle("Correlation Heat Map")
+```
+
+*As seen in the correlation matrix above, there is a diaganol line of purple correlations that are equal to one, being the correlations between each variable and themselves. The next highest correlations are between retention time and molecular weight being 0.51 for each species. This makes sense because molecular weight is used in calculating retention time in mass spectrometry. There are not any other high correlations, nor are there any correlations between variables of different species. *
+
+*Grouped Barplot*
+```{r}
+AQ_Joined %>% ggplot(aes(x=Plot, y=Area, fill=Species)) + geom_bar(stat="summary", fun=mean, position="dodge") + geom_errorbar(stat="summary", position=position_dodge(.9), width=.5) + scale_fill_manual("legend", values=c("ACERRU"="seagreen1", "QUERRU"="seagreen")) + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), legend.position = c(.9,.85)) + ggtitle("Mean Area for each Species per Plot")
+```
+
+*The grouped bar plot above shows the mean ionization area and variance for each species in each plot. From this data, you can see that there is less area of compounds in QUERRU than ACERRU across each plot. It shows that the mean area for both ACERRU and QUERRU is largest in the SERC (SR) plot, and smallest in the SCBI (SB) plot for QUERRU and in the Michigan (UM) plot for ACERRU. The graph shows that in the Michigan plot the species are not much different in terms of area. Intraspecifically, all of the mean areas for QUERRU across each plot are very similar in terms of variance and mean area. For ACERRU, the mean area is very similar amongst SB, SR, and Tyson (TR), but a lot lower in UM. Some of these differences could be atttributed to outliers that exist in the data, but this is a great visualization to lead us in how we should continue to analyze the data. *
+
+*Boxplot*
+```{r}
+AQ_Joined %>% ggplot(aes(x=Plot, y=Molecular.Weight, color=Plot,fill=Species)) + geom_boxplot()  +scale_y_continuous(breaks=seq(0, 900, 50)) + scale_fill_manual("legend", values=c("ACERRU"="seagreen1", "QUERRU"="seagreen")) +scale_color_manual("legend", values=c("SB"="orchid", "SR"="mediumpurple", "TR"= "gray72", "UM"="plum")) + labs(y="Molecular Weight", title = "Molecular Weight of Compounds for each Species in each Plot") + theme_minimal()
+
+  
+```
+*The plot above shows the molecular weight for each Species in each plot. The fill of the boxplots corresponds to the type of species being represented and the outline of the boxplot shows the plot that the species is in, as show in the two legends. From this visualization, it shows that the median molecular weight in each species and plot are almost the same or the same. The variance differs across Species, but not across plots within species. In terms of the molecular weight spread, it appears that the majority of the compounds are below 300 grams in weight, but that there are also bunches of compounds that weigh more. In the future, this mass amount of compounds may need to be filtered out through chromatogram noise thresholds as they may be noise in the data. It is important to view graphs like these so that you can know where most of your data lies and the type of filtering that must be down downstream. *
+
+##5. DIMENSIONALITY REDUCTION
+```{r}
+#this line was giving the cluster code troubles and the name needed to be changed to a better format
+AQ_Joined <- AQ_Joined %>% mutate(Name = str_replace(Name, "3<df>-Androstanediol", "Androstanediol"))  
+
+
+#Created a kmeans for 3 clusters as a prediction: 
+library(cluster)
+clust_dat<-AQ_Joined %>% ungroup() %>% dplyr::select_if(is.numeric) 
+clust_dat
+kmeansAQ <- clust_dat %>% scale %>% kmeans(3)
+kmeansAQ$size
+kmeansAQ$centers
+kmeansAQ$betweenss
+#visualizing what 3 clusters looks like: 
+kmeansclustAQ <- clust_dat %>% mutate(cluster=as.factor(kmeansAQ$cluster))
+kmeansclustAQ %>% ggplot(aes(Molecular.Weight,RT..min.,color=cluster)) + geom_point()
+```
+
+```{r}
+#deciding on number of clusters through a silhouette width: 
+sil_width <- vector()
+for(i in 2:10){
+kms <- kmeans(clust_dat,centers=i) 
+sil <- silhouette(kms$cluster,dist(clust_dat)) 
+sil_width[i]<-mean(sil[,3]) 
+}
+ggplot()+geom_line(aes(x=1:10,y=sil_width))+scale_x_continuous(name="k",breaks=1:10)
+
+#put 2 cluster kmeans into a cluster assignment and plot to make sure that the clusters are split 
+finalAQ <- AQ_Joined %>% ungroup %>% select(is.numeric) %>% scale %>% as.data.frame
+finalAQ_kmeans <- finalAQ %>% kmeans(2) 
+kmeansclust2 <- finalAQ %>% mutate(cluster=as.factor(finalAQ_kmeans$cluster))
+kmeansclust2 %>% ggplot(aes(RT..min.,Molecular.Weight,color=cluster)) + geom_point()  #clusters are relatively split this way with 2 kmeans 
+
+```
+
+
+
+
+
+
+
+*In order to better understand how my data is clustered, I used the kmeans method in order to observe how my numeric variables were associated with one another. I first created a scaled vector that predicted 3 clusters named `kmeansAQ`. Once I graphed this, I realized that I should go back and see how many clusters I should using a silhouette graph as the clusters were not very clear. The higher values in the silhouette graph for silhouette width are 2 and 3, both being above 0.95. I decided to go with 2 as it seems to be the best value predicted from this tool. I finalized a cluster assignment of kmeans=2 for this data, and found that the clusters were more spread apart this way than with kmeans=3.*
+
+
+```{r}
+#visualizing the clusters: 
+library(GGally)
+ggpairs(kmeansclust2, columns = 1:4, aes(color=cluster)) 
+```
+*The data redundancy is more clear after analyzing this pairwise distribution of our clusters across the 4 numeric variables I included in this analysis. The clusters of data are not super clear in this dataset as the samples are from the same two species from the same four forest plots. It is expected that their chemical composition should be mostly the same. One important trend that you can see from this data is that retention time and molecular weight are strongly correlated as retention time is calculated from molecular weight. On the other hand, Area is not strongly correlated to retention time or molecular weight. Additionally, retention time, molecular weight, and area (measurement variables) do not have a strong correlation with the full match variable, which makes sense as it is not produced by the mass spectrometry machine itself, but the program that analyzes this data. This visualization and clustering method makes it clear that when moving forward we will need to consider area and either retention time or molecular weight when comapring this data against other species and itself.*
+
+*In conclusion, this project investigated the variables represented in mass spectrometry data from two species, Acer rubra and Quercus alba, from four different North American forest plots. The visualizations and summary statistics produce from this analysis will be used for further investigation in the intra and interspecific chemical similarities and differences amongst these two species. The generated metabolomic data is from the Sedio lab at the University of Texas at Austin and was processed on Compound Discover before being manipulated and analyzed in R studio. *

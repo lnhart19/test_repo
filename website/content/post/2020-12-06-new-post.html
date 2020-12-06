@@ -1,0 +1,27 @@
+---
+title: 'The great debate: R vs. Python'
+author: ''
+date: '2020-12-06'
+slug: new-post
+categories: []
+tags: []
+description: ''
+---
+
+<link href="/rmarkdown-libs/anchor-sections/anchor-sections.css" rel="stylesheet" />
+<script src="/rmarkdown-libs/anchor-sections/anchor-sections.js"></script>
+
+
+<p>If you have ever lingered on stack exchange, you have likely come across the great debate between R and Python amongst coders. Some say that R is just not enough when it comes to machine learning, but others would lay their life down for its visualization capabilities in ggplot. Some people absolutely love the cleanliness of python code, while others cannot get over the difficulty of regex. You know what I say, why not both!? <img src="/post/2020-12-06-new-post_files/Why%20not%20both,%20R%20and%20python.png" /></p>
+<p>I will show you how to use both R and python in the same script using the package: <code>reticulate</code>. I will manipulate the infamous <code>iris</code> and <code>diamonds</code> dataset in both R and python to prove that not only can these languages speak to each other, but they can also perform identical tasks using different functions. I will create a new column in each dataset as well as plot some of the variables.</p>
+<pre class="r"><code>library(reticulate)
+library(tidyverse)</code></pre>
+<pre><code>## ── Attaching packages ───────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──</code></pre>
+<pre><code>## ✓ ggplot2 3.3.2     ✓ purrr   0.3.4
+## ✓ tibble  3.0.3     ✓ dplyr   1.0.1
+## ✓ tidyr   1.1.1     ✓ stringr 1.4.0
+## ✓ readr   1.3.1     ✓ forcats 0.5.0</code></pre>
+<pre><code>## ── Conflicts ──────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+## x dplyr::filter() masks stats::filter()
+## x dplyr::lag()    masks stats::lag()</code></pre>
+<pre class="r"><code>irisR &lt;- iris</code></pre>
